@@ -1,0 +1,4 @@
+Download  12 months of data from May 2021 to April 2022 from:
+https://divvy-tripdata.s3.amazonaws.com/index.html
+
+Put these files in this folder and save as an excel workbook (.xlsx) file

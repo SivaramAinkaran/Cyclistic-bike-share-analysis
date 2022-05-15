@@ -1,0 +1,335 @@
+---
+title: "Cyclistic Case Study"
+author: "Sivaram Ainkaran"
+date: "09/05/2022"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r loading packages, echo=FALSE, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(ggplot2)
+library(readxl)
+library(lubridate)
+library(tinytex)
+
+```
+Welcome to the Cyclistic bike-share analysis case study! In this case study, I have performed many real-world tasks of a junior data analyst. By following the steps of the data analysis process: ask, prepare, process, analyze, share, and act I will answer specific Business tasks and questions.\ 
+
+Cyclistic is a bike share company which allows users to pick up bikes from certain docking stations and return them to any other Cyclistic docking station. There are over 5,800 bikes and 600 docking stations for customers to have access to.\  
+
+Customers can choose to pay for a single ride, for a full day of riding (both noted as a casual rider) or they can buy an annual membership (noted as a member). Cyclistic's financial managers have found that annual members are much more profitable than casual riders and want to understand what makes people take out an annual membership and how they can improve their advertising to attract more annual members.\
+
+We have data from Cyclistic for the last 12 months which shows details about riders and their use of Cyclistic's bikes. Using this data, I hope to determine the best steps for Cyclistic to take ahead. The following are the steps taken and the conclusions derived while analysing the data.
+
+\
+\
+We start by importing the 12 months of data into variables based on their name to use. Below we see the May 2021 data as a data frame.\
+
+```{r Assigning variables, echo=FALSE, message=FALSE, warning=FALSE}
+#Get this data from https://divvy-tripdata.s3.amazonaws.com/index.html
+#Assign variable for each month's data
+may_2021 <- read_excel("case_study_data/202105-divvy-tripdata.xlsx")
+
+jun_2021 <- read_excel("case_study_data/202106-divvy-tripdata.xlsx")
+
+jul_2021 <- read_excel("case_study_data/202107-divvy-tripdata.xlsx")
+aug_2021 <- read_excel("case_study_data/202108-divvy-tripdata.xlsx")
+sep_2021 <- read_excel("case_study_data/202109-divvy-tripdata.xlsx")
+oct_2021 <- read_excel("case_study_data/202110-divvy-tripdata.xlsx")
+nov_2021 <- read_excel("case_study_data/202111-divvy-tripdata.xlsx")
+dec_2021 <- read_excel("case_study_data/202112-divvy-tripdata.xlsx")
+jan_2022 <- read_excel("case_study_data/202201-divvy-tripdata.xlsx")
+feb_2022 <- read_excel("case_study_data/202202-divvy-tripdata.xlsx")
+mar_2022 <- read_excel("case_study_data/202203-divvy-tripdata.xlsx")
+apr_2022 <- read_excel("case_study_data/202204-divvy-tripdata.xlsx")
+head(may_2021)
+```
+
+\
+
+```{r merging data, message=FALSE, warning=FALSE, include=FALSE}
+#ensuring column names are exactly the same (using most recent conventions)
+#assigns each vector of column names to a different variable
+a_1 <- colnames(may_2021)
+a_2 <- colnames(jun_2021)
+a_3 <- colnames(jul_2021)
+a_4 <- colnames(aug_2021)
+a_5 <- colnames(sep_2021)
+a_6 <- colnames(oct_2021)
+a_7 <- colnames(nov_2021)
+a_8 <- colnames(dec_2021)
+a_9 <- colnames(jan_2022)
+a_10 <- colnames(feb_2022)
+a_11 <- colnames(mar_2022)
+a_12 <- colnames(apr_2022)
+
+col_title <- c(a_1, a_2, a_3, a_4, a_5, a_6, a_7, a_8, a_9, a_10, a_11, a_12) #creates a vector with all column names used across all months
+col_title <- unique(col_title) #finds all unique column names used across all months
+
+#find any different column names between most recent and all other months
+setdiff(a_12, col_title) #consistent column names, no need to reassign them
+
+#check to see any inconsistencies within the data
+str(may_2021)
+str(jun_2021)
+str(jul_2021)
+str(aug_2021)
+str(sep_2021)
+str(oct_2021)
+str(nov_2021)
+str(dec_2021)
+str(jan_2022)
+str(feb_2022)
+str(mar_2022)
+str(apr_2022) #all data types are assigned correctly and consistently throughout data frames
+              #ride_length has dates in it but we can remove those once merged
+
+#merge data frames
+cyclistic <- bind_rows(may_2021, jun_2021, jul_2021, aug_2021, sep_2021, oct_2021, nov_2021, dec_2021, jan_2022, feb_2022, mar_2022, apr_2022)
+```
+
+### Processing, Cleaning and Merging Data\
+
+We proceed by processing, merging and cleanings all this data into 1 data frame which can be used to analyse and determine the information we can gain from it.\
+
+```{r inspect/clean new data frame, echo=FALSE, message=FALSE, warning=FALSE}
+
+#remove duplicates in data
+cyclistic <- cyclistic %>%  distinct()
+
+#check values in discrete data
+#unique(cyclistic$rideable_type) #correct number of unique values
+#unique(cyclistic$member_casual) #correct number of unique values
+#unique(cyclistic$start_station_name) #no street names out of the ordinary except NA
+#unique(cyclistic$end_station_name) #no street names out of the ordinary except NA
+a_b <- cyclistic %>% filter(start_station_name =="HQ QR")
+#a_b #no station names HQ QR (when bikes were taken out of docks and checked by quality)
+
+#make ride_length a numeric data type with time in seconds
+cyclistic <- cyclistic %>% mutate(ride_length = difftime(ended_at, started_at))
+
+#To help with aggregating yearly, monthly and daily data
+cyclistic <- cyclistic %>% mutate(year = format(started_at, format = "%Y"))
+cyclistic <- cyclistic %>% mutate(month = format(started_at, format = "%m"))
+cyclistic <- cyclistic %>% mutate(date = format(started_at, format = "%d"))
+
+
+#inspect all information about data for inconsistencies
+#colnames(cyclistic)
+#nrow(cyclistic)
+#dim(cyclistic)
+#head(cyclistic)
+#str(cyclistic) #ride_length and month are not numeric
+
+cyclistic$ride_length <- as.numeric(as.character(cyclistic$ride_length))
+cyclistic$month <- as.numeric(cyclistic$month)
+
+#is.numeric(cyclistic$ride_length) #confirming that ride_length is numeric 
+#is.numeric(cyclistic$month) #confirming that ride_length is numeric 
+
+#check if any ride lengths were <= 0
+a_c <- cyclistic %>%  filter(ride_length < 0)
+#a_c #140 ride lengths <0
+#remove ride_length<0
+cyclistic_clean <- cyclistic[!(cyclistic$ride_length < 0),]
+#remove docked bikes
+cyclistic_clean <- cyclistic %>%  filter(rideable_type != "docked_bike")
+head(cyclistic_clean)
+
+```
+
+\
+
+### Analysing and Visualising Data
+\
+Now we can continue onto analysing this data and visualising it.\
+We start by comparing the number of rides and average duration of rides that annual members and casual members take based on the day of the week it is. 
+
+\
+Below we can see the summarised table we use to visualise this.\
+
+
+
+```{r Comparing annual members and casual riders based on day of week, echo=FALSE, message=FALSE, warning=FALSE}
+#group by annual members and casual riders
+cyclistic_group <- cyclistic_clean %>% group_by(member_casual)
+
+#comparing basic stats of members vs casuals
+#cyclistic_group %>% summarize(mean(ride_length))
+#cyclistic_group %>% summarize(median(ride_length))
+#cyclistic_group %>% summarize(max(ride_length))
+#cyclistic_group %>% summarize(min(ride_length))
+
+#group by day of week
+cyclistic_group_day <-  cyclistic_group %>% group_by(member_casual, day_of_week)
+
+#compare mean ride duration and number of rides of members vs casual based on day of week
+cyclistic_compare <- cyclistic_group_day %>% summarize(number_of_rides = n(), average_duration=mean(ride_length))
+
+#add new column with weekday names
+cyclistic_compare <- cyclistic_compare %>% mutate(weekday = wday(day_of_week, label=TRUE))
+
+#add new column for duration in minutes
+cyclistic_compare <- cyclistic_compare %>% mutate(average_duration_min = average_duration/60)
+
+head(cyclistic_compare)
+
+```
+\
+The average_duration_min here displays the average duration that each ride lasts in minutes and the number_of_rides displays the total number of rides over a year for that combination of rider and day of the week.
+\
+We can go on to visualise this data as column graphs.
+
+\
+```{r day based visualization, echo=FALSE, message=FALSE, warning=FALSE}
+#visualize the number of rides per weekday (comparing members vs casuals)
+p <- ggplot(data=cyclistic_compare) + geom_col(aes(x=weekday, y=number_of_rides, fill=member_casual), position="dodge")
+
+#visualize the average ride length per weekday (comparing members vs casuals)
+q <- ggplot(data=cyclistic_compare) + geom_col(aes(x=weekday, y=average_duration_min, fill=member_casual), position="dodge") 
+
+
+#making visuals look nicer
+p + scale_y_continuous(labels=scales::comma, breaks=round(seq(0, (max(cyclistic_compare$number_of_rides)+10000), by=100000))) + labs(title="Number of Rides per Day of Week", y="Number of Rides\n", x="\nDay of Week", fill="Rider Type\n") + theme(title=element_text(size=13, face="bold"), axis.title = element_text(face="bold", size=12),axis.text.y = element_text(angle = 40, hjust=0.2), axis.text=element_text(size=10), legend.title=element_text(face="bold"))
+
+q+ scale_y_continuous(labels=scales::comma, breaks=round(seq(0, (max(cyclistic_compare$average_duration_min)+10), by=10))) + labs(title = "Average Ride Duration per Day of Week", y="Average Ride Duration (mins)\n", x="\nDay of Week", fill="Rider Type\n") + theme(title=element_text(size=13, face="bold"), axis.title = element_text(face="bold", size=12), axis.text=element_text(size=10), legend.title=element_text(face="bold"))
+```
+
+\
+We can see here that members tend to use Cyclistic's service more than casual riders during the week but casual riders' use of the bikes spikes over the weekend.
+Looking at the second graph showing the average ride duration, we can see that members tend to have a consistent ride length during the week, spiking slightly over the weekends. Casual riders have much longer average ride lengths overall.\
+Following on from this, we can also see how the month of the year affects how casual riders and members make use of Cyclistic's services.
+
+\
+Below we can see the summarised data we can use to visualise this.\
+
+
+```{r comparing monthly users, echo=FALSE, message=FALSE, warning=FALSE}
+#group by month
+cyclistic_group_mth <-  cyclistic_group %>% group_by(member_casual, month)
+
+cyclistic_compare_mth <- cyclistic_group_mth %>% summarize(number_of_rides = n(), average_duration=mean(ride_length))
+
+#add new column with month names
+cyclistic_compare_mth$mth_str <- month.abb[cyclistic_compare_mth$month]
+
+#add new column for duration in minutes
+cyclistic_compare_mth <- cyclistic_compare_mth %>% mutate(average_duration_min = average_duration/60)
+
+cyclistic_compare_mth <- cyclistic_compare_mth %>% arrange(month)
+
+head(cyclistic_compare_mth)
+
+```
+
+\
+We can go on to visualise this data as column graphs.
+
+\
+
+```{r month based visualisations, echo=FALSE, message=FALSE, warning=FALSE}
+#visualize the number of rides per weekday (comparing members vs casuals)
+r <- ggplot(data=cyclistic_compare_mth) + geom_col(aes(x=month, y=number_of_rides, fill=member_casual), position="dodge")
+
+#visualize the average ride length per weekday (comparing members vs casuals)
+s <- ggplot(data=cyclistic_compare_mth) + geom_col(aes(x=month, y=average_duration_min, fill=member_casual), position="dodge") 
+
+#making visuals look nicer
+r + scale_y_continuous(labels=scales::comma, breaks=round(seq(0, (max(cyclistic_compare_mth$number_of_rides)+10000), by=100000))) + labs(title="Number of Rides per Month",y="Number of Rides\n", x="\nMonth", fill="Rider Type\n") + theme(title=element_text(size=13, face="bold"), axis.title = element_text(face="bold", size=12),axis.text.y = element_text(angle = 40, hjust=0.2), axis.text=element_text(size=10), legend.title=element_text(face="bold")) + scale_x_continuous(breaks=c(1,2,3,4,5,6,7,8,9,10,11,12), labels = month.abb)
+
+s + scale_y_continuous(labels=scales::comma, breaks=round(seq(0, (max(cyclistic_compare_mth$average_duration_min)+10), by=10))) + labs(title="Average Ride Duration per Month", y="Average Ride Duration (mins)\n", x="\nMonth", fill="Rider Type\n") + theme(title=element_text(size=13, face="bold"), axis.title = element_text(face="bold", size=12), axis.text=element_text(size=10), legend.title=element_text(face="bold")) + scale_x_continuous(breaks=c(1,2,3,4,5,6,7,8,9,10,11,12), labels = month.abb)
+
+```
+
+\
+We can see that throughout the year, the number of rides that members take is consistently higher than the number that casual riders take, except for July where casual riders have taken slightly more rides. We can also see the number of rides drop from November to April and peaking around the centre of the year.\
+The average duration of rides however stays rather consistent, slightly peaking towards the middle of the year and with casual riders, again, having a higher average ride length overall.\
+The last analysis we can conduct is based on the type of bike each type of rider preferred.
+
+\
+Below we can see the summarised tables used to visualise the data regarding the preference of bike types among different types of riders\
+```{r type of bike each type of user preferred, echo=FALSE, message=FALSE, warning=FALSE}
+
+#assign a numeric value to each rideable type
+cyclistic_group <- cyclistic_clean %>% group_by(member_casual, rideable_type)
+
+#useful columns on number of rides and average duration in minutes for visualising
+cyclistic_biketype_summary <- cyclistic_group %>% summarize(number_of_rides = n(), average_duration_min=(mean(ride_length))/60)
+
+head(cyclistic_biketype_summary)
+
+```
+
+\
+We can go on to visualise this data as column graphs.
+
+\
+
+```{r biketype based visualisation, echo=FALSE, message=FALSE, warning=FALSE}
+
+#visualize the number of rides based on type of bike (comparing members vs casuals)
+t <- ggplot(data=cyclistic_biketype_summary) + geom_col(aes(x=rideable_type, y=number_of_rides, fill=member_casual), position="dodge")
+
+#visualize the average ride length per weekday (comparing members vs casuals)
+u <- ggplot(data=cyclistic_biketype_summary) + geom_col(aes(x=rideable_type, y=average_duration_min, fill=member_casual), position="dodge") 
+
+#making visuals look nicer
+t + scale_y_continuous(labels=scales::comma, breaks=round(seq(0, (max(cyclistic_biketype_summary$number_of_rides)+10000), by=500000))) + labs(title="Number of Rides per Bike type", y="Number of Rides\n", x="\nBike Type", fill="Rider Type\n") + theme(title=element_text(size=13, face="bold"), axis.title = element_text(face="bold", size=12),axis.text.y = element_text(angle = 40, hjust=0.2), axis.text=element_text(size=10), legend.title=element_text(face="bold")) + scale_x_discrete(labels=c("Classic Bike", "Electric Bike"))
+
+u + scale_y_continuous(labels=scales::comma, breaks=round(seq(0, (max(cyclistic_biketype_summary$average_duration_min)+10), by=10))) + labs(title="Average Ride Duration per Bike type", y="Average Ride Duration (mins)\n", x="\nBike Type", fill="Rider Type\n") + theme(title=element_text(size=13, face="bold"),axis.title = element_text(face="bold", size=12), axis.text=element_text(size=10)) + scale_x_discrete(labels=c("Classic Bike", "Electric Bike"))
+
+
+```
+
+\
+We can see here that the number of rides taken is higher for both bike types for members. There is also a higher number of rides taken on classic bikes than electric bikes for both rider types with members having a much larger discrepancy./
+Looking at the average ride duration, members again tend to have a lower average ride duration and classic bikes have a higher rider duration, especially for casual riders who have a higher discrepancy between the two.
+
+\
+
+### Conclusions from the Data
+
+\
+Looking at all of this data, we can see that members tend to use Cyclistic's service more during the week than the weekend and casual riders tend to use it more during the weekend. Cyclistic's services are used more as we go towards the middle of the year, following a traditional bell curve shape and riders tend to prefer using Classic bikes over Electric bikes
+\
+This shows that members take out annual passes because they are most likely using Cyclistic's service to travel to work or school, explaining the higher usage during weekdays than weekends. Casual members tend to use the bikes for leisure rides, explaining the higher average duration and higher number of rides on the weekends.
+\
+This also shows that most likely due to more people taking holidays during the end and beginning of the year, there is much less use of the service during those months, ramping up and back down throughout the year. 
+\
+Finally we can see that, either due to the preference of different people, price of using different bikes or the availability of types of bikes throughout the year, classic bikes are used more than electric bikes.
+
+\
+
+### Our Recommendations
+
+\
+Taking into account all this information, we can recommend Cyclistic do the following to attract more memberships.
+\
+
+1. Most casual riders would not invest in an annual membership if they feel they will not use it throughout the whole year. Cyclistic could do the following to try remedy this:
+   a. Introduce a new membership feature allowing members to pause their membership for up to 2 months per year.
+   b. Introduce a monthly membership option for riders who cannot commit to an annual membership.
+2. Since it seems that daily commuters make up most of the annual members, Cyclistic can appeal to casual riders by:
+   a. Introducing a digital campaign appealing for more exercise in the Chicago community.
+   b. Advertising their services throughout the city, and introduce paths which will allow students access to their service to open up Cyclistic to a whole new market.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
